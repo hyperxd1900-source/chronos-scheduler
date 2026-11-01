@@ -96,17 +96,35 @@ function parseDays(text, referenceDate) {
 }
 
 function inferTask(text, timeMatch) {
-  let task = text.trim()
-  task = task.replace(/^\s*(please\s+)?(i(?:\s+would)?\s+like\s+to|i\s+wanna|i\s+want\s+to|block|schedule|set aside|reserve|add|put|focus on|work on|spend time on)\s+/i, '')
-  if (timeMatch) task = task.replace(timeMatch[0], ' ')
-  else task = task.replace(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/gi, ' ')
-  task = task.replace(/\bfor\s+\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\b/gi, ' ')
-  task = task.replace(/\b(every day|each day|daily|all week|weekdays?|weekends?|every week|weekly|this week|next week|today|tomorrow|on|every)\b/gi, ' ')
-  task = task.replace(/\bnext\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, ' ')
-  task = task.replace(/\b(from|between|for|at|the|time|a|an)\b/gi, ' ')
-  task = task.replace(/\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)s?\b/gi, ' ')
-  task = task.replace(/\s+/g, ' ').replace(/^[\s,–—-]+|[\s,–—-]+$/g, '').trim()
-  return task || ''
+  let taskText = text.trim()
+  if (timeMatch) taskText = taskText.replace(timeMatch[0], ' ')
+  taskText = taskText
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/gi, ' ')
+    .replace(/\bfor\s+\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\b/gi, ' ')
+    .replace(/\b(every day|each day|daily|all week|weekdays?|weekends?|every week|weekly|this week|next week|today|tomorrow)\b/gi, ' ')
+    .replace(/\bnext\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, ' ')
+    .replace(/\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)s?\b/gi, ' ')
+    .replace(/\b(?:is|are|am|was|were|be|been|being)\b/gi, ' ')
+    .replace(/\b(?:on|every|from|between|for|at|the|a|an)\b/gi, ' ')
+
+  taskText = taskText.replace(/^\s*(?:please\s+)?(?:i\s+(?:would like|want|wanna|need)(?:\s+to)?|can you|could you)\s+/i, '')
+  taskText = taskText.replace(/^\s*(?:please\s+)?(?:block(?: out)?|schedule|set aside|reserve|add|put|focus(?: on)?|work on|spend time on)\s+/i, '')
+  taskText = taskText.replace(/\s+/g, ' ').replace(/^[\s,–—-]+|[\s,–—-]+$/g, '').trim()
+  if (!taskText) return ''
+
+  const parsed = nlp(taskText)
+  parsed.dates().remove()
+  const nouns = parsed.nouns().out('array')
+    .filter((noun) => !/^(?:i|we|you|time|day|week|weekday|weekend)$/i.test(noun.trim()))
+  if (nouns.length) return nouns.join(' ').replace(/\s+/g, ' ').trim()
+
+  const verbs = parsed.verbs()
+  if (verbs.length) {
+    return verbs.toGerund().out('text')
+      .replace(/^(?:is|are|am|was|were)\s+/i, '')
+      .trim()
+  }
+  return ''
 }
 
 export function parseSchedule(text, referenceDate = new Date()) {

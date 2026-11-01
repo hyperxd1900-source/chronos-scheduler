@@ -17,7 +17,7 @@ Open the localhost URL printed by Vite (typically `http://127.0.0.1:5173`). Crea
 2. Create an OAuth client ID for a **Web application** and add the exact Vite origin (usually `http://127.0.0.1:5173`) to **Authorized JavaScript origins**.
 3. In Chronos, select **Connect calendar**, enter the client ID, and authorize calendar event access. Use `primary` or another calendar ID.
 
-Chronos uses Google Identity Services' browser token flow. The OAuth client ID is public application configuration; the access token stays in memory and is discarded when the tab closes or reloads. Blocks and preferences are stored in this browser's local storage. Connecting requests the `calendar.events` scope so the app can create, move, or delete events when you choose those conflict actions.
+Chronos uses Google Identity Services' browser token flow. The OAuth client ID is public application configuration. The short-lived access token is kept in session storage so a page reload in the same tab can automatically sync; it is cleared when the tab session ends, the user disconnects, or the token expires. Blocks and preferences are stored in this browser's local storage. Connecting requests the `calendar.events` scope so the app can create, move, or delete events when you choose those conflict actions.
 
 ## Scheduling and conflict behavior
 

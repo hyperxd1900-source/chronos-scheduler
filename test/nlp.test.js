@@ -25,10 +25,18 @@ test('understands weekday names and one-sided meridiem ranges', () => {
   assert.deepEqual(intent.days, ['mon', 'tue', 'wed', 'thu', 'fri'])
 })
 
+test('extracts activity nouns and normalizes action verbs to gerunds', () => {
+  const project = parseSchedule('I want to work on my project from 2 to 3 PM', reference)
+  const coding = parseSchedule('I wanna code from 2 to 3 PM', reference)
+
+  assert.equal(project.task, 'my project')
+  assert.equal(coding.task, 'coding')
+})
+
 test('uses compromise-dates to resolve a relative date separately from its time range', () => {
   const intent = parseSchedule('Write tomorrow from 2 to 3 PM', reference)
 
-  assert.equal(intent.task, 'Write')
+  assert.equal(intent.task, 'writing')
   assert.equal(intent.date, '2026-10-27')
   assert.deepEqual(expandSchedule(intent, reference).map((block) => block.day), ['2026-10-27'])
 })
@@ -36,7 +44,7 @@ test('uses compromise-dates to resolve a relative date separately from its time 
 test('parses a duration after a single start time', () => {
   const intent = parseSchedule('Read at 2 PM for 90 minutes', reference)
 
-  assert.equal(intent.task, 'Read')
+  assert.equal(intent.task, 'reading')
   assert.equal(intent.start, '14:00')
   assert.equal(intent.end, '15:30')
 })

@@ -149,14 +149,14 @@ function render() {
           <label>Calendar ID<input name="calendarId" autocomplete="off" value="${escapeHtml(settings.calendarId)}" placeholder="primary" /></label>
           <div class="settings-actions"><button class="button button-quiet" id="save-settings" type="button">Save settings</button><button class="button button-primary" type="submit">${isGoogleConnected() ? 'Reconnect' : 'Connect with Google'}</button>${isGoogleConnected() ? '<button class="text-button" id="disconnect-google" type="button">Disconnect</button>' : ''}</div>
         </form>
-        <small>Access tokens stay in memory and are cleared when you close or reload this tab. The app requests permission to manage calendar events.</small>
+        <small>Access tokens are kept in this tab’s session storage and cleared when the tab session ends or the token expires. The app requests permission to manage calendar events.</small>
       </section>
     </main>
     <section class="composer-dock" aria-label="Schedule a block">
       <div class="composer">
         <form id="schedule-form">
           <div class="input-row">
-            <button type="button" class="voice-button ${listening ? 'is-listening' : ''}" id="voice-button" ${speechRecognition ? '' : 'disabled'} aria-label="Start voice input" title="${speechRecognition ? 'Speak your schedule' : 'Voice input is not supported in this browser'}">⌁</button>
+            <button type="button" class="voice-button ${listening ? 'is-listening' : ''}" id="voice-button" aria-pressed="${listening}" ${speechRecognition ? '' : 'disabled'} aria-label="Start voice input" title="${speechRecognition ? 'Speak your schedule' : 'Voice input is not supported in this browser'}">⌁</button>
             <textarea id="schedule-input" rows="1" maxlength="400" aria-label="Describe a schedule block" placeholder="Say or type a plan…">${escapeHtml(draftText)}</textarea>
             <button class="button button-primary" type="submit" ${loading ? 'disabled' : ''} aria-label="Schedule block">${loading ? '…' : '↑'}</button>
           </div>
@@ -610,6 +610,7 @@ async function saveAndConnect() {
     await connectGoogle(settings.clientId, () => {
       calendarEvents = []
     })
+    render()
     await refreshCalendar(false)
     render()
     showMessage('Google Calendar connected. Your access token will not persist after this tab closes.', 'success')
@@ -626,7 +627,7 @@ function startVoiceInput() {
   }
   clearMessage()
   listening = true
-  render()
+  updateVoiceButton()
   speechRecognition.onresult = (event) => {
     draftText = event.results[0][0].transcript
     const input = document.querySelector('#schedule-input')
@@ -635,9 +636,23 @@ function startVoiceInput() {
   speechRecognition.onerror = (event) => showMessage(`Voice input failed: ${event.error}`, 'error')
   speechRecognition.onend = () => {
     listening = false
-    render()
+    updateVoiceButton()
   }
-  speechRecognition.start()
+  try {
+    speechRecognition.start()
+  } catch (error) {
+    listening = false
+    updateVoiceButton()
+    showMessage(error instanceof Error ? error.message : 'Unable to start voice input.', 'error')
+  }
+}
+
+function updateVoiceButton() {
+  const button = document.querySelector('#voice-button')
+  if (!button) return
+  button.classList.toggle('is-listening', listening)
+  button.setAttribute('aria-pressed', String(listening))
+  button.title = listening ? 'Listening… tap to stop' : 'Speak your schedule'
 }
 
 async function removeBlock(id) {
@@ -676,6 +691,14 @@ async function initialize() {
     blocks = getBlocks()
     settings = getSettings()
     render()
+    if (isGoogleConnected()) {
+      try {
+        await refreshCalendar(false)
+      } catch (error) {
+        showMessage(error.message, 'error')
+        render()
+      }
+    }
   } catch (error) {
     app.innerHTML = `<main class="fatal-error"><h1>Could not load Chronos</h1><p>${escapeHtml(error.message)}</p></main>`
   }

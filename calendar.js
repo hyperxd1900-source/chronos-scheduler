@@ -1,9 +1,36 @@
 const API_ROOT = 'https://www.googleapis.com/calendar/v3'
 const GIS_SCRIPT = 'https://accounts.google.com/gsi/client'
 const GIS_SCRIPT_ID = 'google-identity-services'
+const SESSION_TOKEN_KEY = 'chronos.google.access-token'
+const SESSION_AUTHORIZED_KEY = 'chronos.google.authorized'
+const sessionTokenStorage = typeof sessionStorage === 'undefined' ? null : sessionStorage
 
-let accessToken = null
+let accessToken = restoreAccessToken()
+let accessTokenExpiresAt = Number(sessionTokenStorage?.getItem(`${SESSION_TOKEN_KEY}.expiresAt`) || 0)
 let tokenClient = null
+
+function restoreAccessToken() {
+  if (!sessionTokenStorage) return null
+  const expiresAt = Number(sessionTokenStorage.getItem(`${SESSION_TOKEN_KEY}.expiresAt`) || 0)
+  const token = sessionTokenStorage.getItem(SESSION_TOKEN_KEY)
+  if (!token || expiresAt <= Date.now()) {
+    sessionTokenStorage.removeItem(SESSION_TOKEN_KEY)
+    sessionTokenStorage.removeItem(`${SESSION_TOKEN_KEY}.expiresAt`)
+    return null
+  }
+  return token
+}
+
+function clearAccessToken() {
+  accessToken = null
+  accessTokenExpiresAt = 0
+  sessionTokenStorage?.removeItem(SESSION_TOKEN_KEY)
+  sessionTokenStorage?.removeItem(`${SESSION_TOKEN_KEY}.expiresAt`)
+}
+
+function clearAuthorization() {
+  sessionTokenStorage?.removeItem(SESSION_AUTHORIZED_KEY)
+}
 
 function loadGoogleIdentity() {
   if (window.google?.accounts?.oauth2) return Promise.resolve()
@@ -46,17 +73,29 @@ export async function connectGoogle(clientId, onStatus = () => {}) {
       scope: 'https://www.googleapis.com/auth/calendar.events',
       callback: (response) => {
         if (response.error) {
-          accessToken = null
+          clearAccessToken()
+          clearAuthorization()
           reject(new Error(`Google sign-in failed: ${response.error_description || response.error}`))
           return
         }
         accessToken = response.access_token
+        accessTokenExpiresAt = Date.now() + Number(response.expires_in) * 1000
+        try {
+          sessionTokenStorage?.setItem(SESSION_TOKEN_KEY, accessToken)
+          sessionTokenStorage?.setItem(`${SESSION_TOKEN_KEY}.expiresAt`, String(accessTokenExpiresAt))
+          sessionTokenStorage?.setItem(SESSION_AUTHORIZED_KEY, 'true')
+        } catch (error) {
+          clearAccessToken()
+          reject(new Error(`Could not save the Google Calendar session: ${error.message}`))
+          return
+        }
         onStatus({ connected: true, expiresIn: response.expires_in })
         resolve()
       },
       error_callback: (error) => reject(new Error(`Google sign-in failed: ${error.message || error.type}`)),
     })
-    tokenClient.requestAccessToken({ prompt: 'consent' })
+    const hasExistingGrant = Boolean(accessToken || sessionTokenStorage?.getItem(SESSION_AUTHORIZED_KEY) === 'true')
+    tokenClient.requestAccessToken({ prompt: hasExistingGrant ? undefined : 'consent' })
   })
 }
 
@@ -64,11 +103,13 @@ export function disconnectGoogle() {
   if (accessToken && window.google?.accounts?.oauth2) {
     window.google.accounts.oauth2.revoke(accessToken, () => {})
   }
-  accessToken = null
+  clearAccessToken()
+  clearAuthorization()
   tokenClient = null
 }
 
 export function isGoogleConnected() {
+  if (accessToken && accessTokenExpiresAt <= Date.now()) clearAccessToken()
   return Boolean(accessToken)
 }
 
@@ -87,7 +128,7 @@ async function request(path, options = {}) {
     },
   })
   if (response.status === 401) {
-    accessToken = null
+    clearAccessToken()
     throw new Error('Google Calendar authorization expired. Reconnect and try again.')
   }
   if (!response.ok) {
