@@ -75,8 +75,42 @@ function parseTime(text) {
   return null
 }
 
+function parseDuration(text, referenceDate) {
+  const match = text.match(/\bfor\s+(\d+)\s*(days?|weeks?|months?|quarters?|years?)\b/i)
+  if (!match) return null
+
+  const amount = Number(match[1])
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
+    throw new Error('The recurrence duration must be a positive whole number.')
+  }
+
+  const unit = match[2].toLowerCase()
+  const endDate = new Date(referenceDate)
+  if (unit.startsWith('day')) {
+    endDate.setDate(endDate.getDate() + amount)
+  } else if (unit.startsWith('week')) {
+    endDate.setDate(endDate.getDate() + amount * 7)
+  } else {
+    const months = amount * (unit.startsWith('quarter') ? 3 : unit.startsWith('year') ? 12 : 1)
+    if (!Number.isSafeInteger(months)) {
+      throw new Error('The recurrence duration is too long.')
+    }
+    const originalDay = endDate.getDate()
+    endDate.setDate(1)
+    endDate.setMonth(endDate.getMonth() + months)
+    const lastDay = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0).getDate()
+    endDate.setDate(Math.min(originalDay, lastDay))
+  }
+
+  if (Number.isNaN(endDate.getTime())) {
+    throw new Error('The recurrence duration is too long.')
+  }
+  return { endDate: localDateKey(endDate) }
+}
+
 function parseDays(text, referenceDate) {
   const normalized = text.toLowerCase()
+  const duration = parseDuration(text, referenceDate)
   const hasDaily = /\b(every day|each day|daily|all week)\b/.test(normalized)
   const days = new Set()
   for (const match of normalized.matchAll(/\b(sun(?:day)?s?|mon(?:day)?s?|tues?(?:day)?s?|wed(?:nesday)?s?|thurs?(?:day)?s?|fri(?:day)?s?|sat(?:urday)?s?)\b/g)) {
@@ -92,7 +126,7 @@ function parseDays(text, referenceDate) {
     ? 'weekly'
     : /\b(every week|weekly)\b/.test(normalized) ? 'weekly' : 'once'
   if (days.size === 0) days.add(DAYS[referenceDate.getDay()])
-  return { days: DAYS.filter((day) => days.has(day)), frequency }
+  return { days: DAYS.filter((day) => days.has(day)), frequency, duration }
 }
 
 function inferTask(text, timeMatch) {
@@ -101,6 +135,7 @@ function inferTask(text, timeMatch) {
   taskText = taskText
     .replace(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/gi, ' ')
     .replace(/\bfor\s+\d+(?:\.\d+)?\s*(?:minutes?|mins?|hours?|hrs?)\b/gi, ' ')
+    .replace(/\bfor\s+\d+\s*(?:days?|weeks?|months?|quarters?|years?)\b/gi, ' ')
     .replace(/\b(every day|each day|daily|all week|weekdays?|weekends?|every week|weekly|this week|next week|today|tomorrow)\b/gi, ' ')
     .replace(/\bnext\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi, ' ')
     .replace(/\b(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)s?\b/gi, ' ')
@@ -138,7 +173,7 @@ export function parseSchedule(text, referenceDate = new Date()) {
   const task = inferTask(source, rawTimeMatch)
   if (!task) throw new Error('Add a task name, for example “coding”.')
 
-  const { days, frequency } = parseDays(source, referenceDate)
+  const { days, frequency, duration } = parseDays(source, referenceDate)
   const dateText = rawTimeMatch ? source.replace(rawTimeMatch[0], ' ') : source
   const relativeDay = source.match(/\b(today|tomorrow)\b/i)?.[1]?.toLowerCase()
   const relativeDate = new Date(referenceDate)
@@ -151,6 +186,7 @@ export function parseSchedule(text, referenceDate = new Date()) {
     task,
     ...time,
     frequency,
+    duration,
     days: explicitDate ? [DAYS[new Date(parsedDate.start).getDay()]] : days,
     date: explicitDate ? String(parsedDate.start).slice(0, 10) : null,
   }
@@ -185,15 +221,16 @@ export function expandSchedule(intent, referenceDate = new Date()) {
   const firstDay = new Date(referenceDate)
   firstDay.setHours(0, 0, 0, 0)
 
-  for (let offset = 0; offset < 7; offset += 1) {
+  for (let offset = 0; ; offset += 1) {
+    if (!intent.duration && offset >= 7) break
     const date = new Date(firstDay)
     date.setDate(firstDay.getDate() + offset)
+    const isoDay = localDateKey(date)
+    if (intent.duration && isoDay > intent.duration.endDate) break
     const dayName = DAYS[date.getDay()]
     if (!selectedDays.has(dayName)) continue
     const startMinutes = startHour * 60 + startMinute
     if (offset === 0 && startMinutes <= referenceDate.getHours() * 60 + referenceDate.getMinutes()) continue
-    const [year, month, day] = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
-    const isoDay = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     blocks.push({
       task: intent.task,
       day: isoDay,

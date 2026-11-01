@@ -181,7 +181,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   .connection-button { max-width: 155px; font-size: 8px; }
   .week-title { font-size: 17px; }
   .calendar-controls .icon-button { width: 28px; height: 30px; }
-  .sync-button { display: none; }
   .input-row { grid-template-columns: 38px minmax(0, 1fr) 38px; gap: 6px; }
   .input-row textarea, .voice-button, .input-row .button-primary { min-height: 40px; }
   .voice-button, .input-row .button-primary { width: 38px; }

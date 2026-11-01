@@ -49,6 +49,49 @@ test('parses a duration after a single start time', () => {
   assert.equal(intent.end, '15:30')
 })
 
+test('expands weekly schedules through an inclusive calendar-month duration', () => {
+  const intent = parseSchedule('Read every Tuesday from 2 to 3 PM for 3 months', reference)
+  const blocks = expandSchedule(intent, reference)
+
+  assert.equal(intent.task, 'reading')
+  assert.deepEqual(intent.duration, { endDate: '2027-01-26' })
+  assert.deepEqual(blocks.map((block) => block.day), [
+    '2026-10-27', '2026-11-03', '2026-11-10', '2026-11-17',
+    '2026-11-24', '2026-12-01', '2026-12-08', '2026-12-15',
+    '2026-12-22', '2026-12-29', '2027-01-05', '2027-01-12',
+    '2027-01-19', '2027-01-26',
+  ])
+})
+
+test('expands a day-based recurrence through its inclusive end date', () => {
+  const intent = parseSchedule('Study every Tuesday from 2 to 3 PM for 90 days', reference)
+  const blocks = expandSchedule(intent, reference)
+
+  assert.deepEqual(intent.duration, { endDate: '2027-01-24' })
+  assert.equal(blocks.at(-1).day, '2027-01-19')
+  assert.equal(blocks.length, 13)
+})
+
+test('parses quarter and year durations and clamps month-end dates', () => {
+  const quarter = parseSchedule('Study every Tuesday from 2 to 3 PM for 1 quarter', reference)
+  const year = parseSchedule('Study every Tuesday from 2 to 3 PM for 1 year', reference)
+  const monthEnd = parseSchedule(
+    'Study every Tuesday from 2 to 3 PM for 1 month',
+    new Date(2026, 0, 31, 9, 0),
+  )
+
+  assert.deepEqual(quarter.duration, { endDate: '2027-01-26' })
+  assert.deepEqual(year.duration, { endDate: '2027-10-26' })
+  assert.deepEqual(monthEnd.duration, { endDate: '2026-02-28' })
+})
+
+test('rejects a zero-length recurrence duration', () => {
+  assert.throws(
+    () => parseSchedule('Study every Tuesday from 2 to 3 PM for 0 months', reference),
+    /positive whole number/,
+  )
+})
+
 test('skips a recurring block whose time already passed today', () => {
   const lateReference = new Date(2026, 9, 26, 15, 0)
   const intent = parseSchedule('Block 2–3 PM for coding every day this week', lateReference)

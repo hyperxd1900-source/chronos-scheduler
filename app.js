@@ -137,7 +137,7 @@ function render() {
       <section class="schedule-section">
         <div class="section-heading">
           <div><span class="eyebrow">YOUR WEEK</span><h1 class="week-title">${escapeHtml(weekLabel)}</h1></div>
-          <div class="calendar-controls"><button class="icon-button" id="previous-week" aria-label="Previous week">‹</button><button class="text-button today-button" id="current-week">Today</button><button class="icon-button" id="next-week" aria-label="Next week">›</button><button class="text-button sync-button" id="refresh-calendar" ${isGoogleConnected() ? '' : 'disabled'}>↻ Sync</button></div>
+          <div class="calendar-controls"><button class="icon-button" id="previous-week" aria-label="Previous week">‹</button><button class="text-button today-button" id="current-week">Today</button><button class="icon-button" id="next-week" aria-label="Next week">›</button><button class="text-button sync-button" id="refresh-calendar" ${isGoogleConnected() ? '' : 'hidden'}>↻ Sync</button></div>
         </div>
         <div class="calendar-scroll"><div class="week-calendar">${schedule}</div></div>
         <p class="calendar-hint">Select a block to edit it. Google Calendar events appear here when connected.</p>
