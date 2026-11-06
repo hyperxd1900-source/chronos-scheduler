@@ -49,6 +49,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .brand > span:last-child { display: grid; gap: 1px; }
 .brand small { color: var(--dim); font-size: 8px; font-weight: 600; letter-spacing: .12em; }
 .brand-mark { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 10px; color: white; background: var(--accent); font-size: 14px; font-weight: 650; }
+.workflow-link { margin-left: auto; color: var(--accent); font-size: 11px; font-weight: 600; text-decoration: none; }
+.workflow-link:hover { text-decoration: underline; }
 .connection-button { display: inline-flex; min-height: 36px; align-items: center; gap: 7px; padding: 0 11px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 11px; font-weight: 550; cursor: pointer; transition: .15s ease; }
 .connection-button:hover, .connection-button.is-connected { border-color: #d7bec5; color: var(--accent); background: #fffafb; }
 .connection-dot { width: 7px; height: 7px; border-radius: 50%; background: #b6aea8; }

@@ -1,6 +1,6 @@
 # Chronos
 
-Chronos is a local-first, mobile-first scheduling assistant. Describe a focus block in plain language, review potential overlaps, and save it locally or to Google Calendar. Its horizontally scrollable seven-day calendar supports editing and deleting individual blocks. Each scheduled date is a separate event; recurring requests expand into individual dates rather than recurrence rules.
+Chronos is a local-first personal workspace with a visual workflow builder and a natural-language scheduler.
 
 ## Run locally
 
@@ -9,7 +9,19 @@ npm install
 npm run dev
 ```
 
-Open the localhost URL printed by Vite (typically `http://127.0.0.1:5173`). Create a production build with `npm run build`; run the NLP, calendar, and scheduler tests with `npm test`.
+Open the localhost URL printed by Vite (typically `http://127.0.0.1:5173`) for Workflow Studio, or visit `/scheduler.html` for the personal scheduler. Create a production build with `npm run build`; run tests with `npm test`.
+
+## Workflow Studio
+
+Create Input, Process, and Output nodes from the palette, then connect a node's output port to a compatible input port. Select nodes to edit their names and variables, set JSON defaults, and configure process expressions. The deterministic runner evaluates nodes in topological order, highlights the first failed step, and records inputs and outputs in the trace panel. Expressions support input names, parentheses, arithmetic, comparisons, booleans, null, and quoted strings; arbitrary JavaScript is not evaluated.
+
+Workflows are saved in browser local storage. Use **Export JSON** and **Import** to move a graph between browsers. The canvas also supports node dragging, pan, zoom, fit, undo, and redo. Deleting a connected node prompts before its edges are removed, leaving downstream inputs unconnected.
+
+Workflow graphs are versioned JSON objects with `version`, `nodes`, and `edges` fields. The workflow engine is dependency-free and its tests run with `npm test`.
+
+## Personal scheduler
+
+Chronos is also a local-first, mobile-first scheduling assistant. Describe a focus block in plain language, review potential overlaps, and save it locally or to Google Calendar. Its horizontally scrollable seven-day calendar supports editing and deleting individual blocks. Each scheduled date is a separate event; recurring requests expand into individual dates rather than recurrence rules.
 
 ## Connect Google Calendar
 

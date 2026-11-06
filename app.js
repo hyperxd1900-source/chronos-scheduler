@@ -129,6 +129,7 @@ function render() {
   app.innerHTML = `
     <header class="topbar">
       <a class="brand" href="#" aria-label="Chronos home"><span class="brand-mark">C</span><span>chronos<small>PERSONAL SCHEDULER</small></span></a>
+      <a class="workflow-link" href="/">Workflow studio</a>
       <button class="connection-button ${isGoogleConnected() ? 'is-connected' : ''}" id="toggle-settings" aria-expanded="false">
         <span class="connection-dot"></span>${isGoogleConnected() ? 'Google Calendar connected' : 'Connect calendar'}
       </button>
